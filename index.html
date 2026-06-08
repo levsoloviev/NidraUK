@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIDRA — Coming Soon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cinzel:wght@300;400&family=Cormorant:ital@1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #080808;
+    --deep: #0d0d0d;
+    --gold: #c9a96e;
+    --gold-light: #e8cc9a;
+    --gold-dim: #7a6340;
+    --cream: #f0e8d8;
+    --cream-dim: rgba(240,232,216,0.5);
+    --white: #faf7f2;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--black);
+    color: var(--cream);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, width 0.3s, height 0.3s, opacity 0.3s;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 0.5px solid rgba(201,169,110,0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease-out, width 0.3s, height 0.3s, opacity 0.3s;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.6;
+  }
+
+  /* Ambient glow */
+  .glow-top {
+    position: fixed;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(201,169,110,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-bottom {
+    position: fixed;
+    bottom: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 300px;
+    background: radial-gradient(ellipse, rgba(201,169,110,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Lines decoration */
+  .line-left, .line-right {
+    position: fixed;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(201,169,110,0.15) 30%, rgba(201,169,110,0.15) 70%, transparent);
+    z-index: 1;
+  }
+  .line-left { left: 60px; }
+  .line-right { right: 60px; }
+
+  /* Breathing orb */
+  .orb-container {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .orb {
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%,
+      rgba(201,169,110,0.04) 0%,
+      rgba(201,169,110,0.02) 40%,
+      transparent 70%);
+    border: 0.5px solid rgba(201,169,110,0.06);
+    animation: breathe 8s ease-in-out infinite;
+  }
+  .orb-inner {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(201,169,110,0.1);
+    animation: breathe 8s ease-in-out infinite 1s;
+  }
+  .orb-core {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,169,110,0.15) 0%, transparent 70%);
+    animation: pulse-core 8s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: translate(-50%,-50%) scale(1); opacity: 0.6; }
+    50% { transform: translate(-50%,-50%) scale(1.08); opacity: 1; }
+  }
+  @keyframes pulse-core {
+    0%, 100% { opacity: 0.4; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%,-50%) scale(1.3); }
+  }
+
+  /* Main layout */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  /* Top bar */
+  .top-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 80px;
+    z-index: 20;
+    opacity: 0;
+    animation: fadeUp 1.2s ease forwards 0.3s;
+  }
+  .top-bar-line {
+    flex: 1;
+    height: 0.5px;
+    background: linear-gradient(to right, transparent, rgba(201,169,110,0.3), transparent);
+  }
+  .top-bar-text {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 4px;
+    color: var(--gold-dim);
+    padding: 0 24px;
+    white-space: nowrap;
+  }
+
+  /* Center content */
+  .center {
+    text-align: center;
+    position: relative;
+    z-index: 10;
+  }
+
+  .eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.6s;
+  }
+
+  .wordmark {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(56px, 10vw, 100px);
+    font-weight: 300;
+    letter-spacing: 24px;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 0;
+    opacity: 0;
+    animation: fadeUp 1.2s ease forwards 0.9s;
+    position: relative;
+  }
+  .wordmark::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 0.5px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+  }
+
+  .tagline {
+    margin-top: 40px;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: clamp(14px, 1.8vw, 18px);
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 2px;
+    color: var(--cream-dim);
+    line-height: 1.8;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 1.2s;
+  }
+
+  /* Divider */
+  .ornament {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 36px auto;
+    width: 200px;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 1.4s;
+  }
+  .ornament-line {
+    flex: 1;
+    height: 0.5px;
+    background: var(--gold-dim);
+    opacity: 0.5;
+  }
+  .ornament-diamond {
+    width: 5px; height: 5px;
+    border: 0.5px solid var(--gold);
+    transform: rotate(45deg);
+    opacity: 0.8;
+  }
+
+  /* Email form */
+  .form-area {
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 1.6s;
+  }
+  .form-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--gold-dim);
+    margin-bottom: 14px;
+    display: block;
+    text-transform: uppercase;
+  }
+  .form-row {
+    display: flex;
+    gap: 0;
+    border: 0.5px solid rgba(201,169,110,0.2);
+    background: rgba(255,255,255,0.02);
+    transition: border-color 0.3s;
+  }
+  .form-row:focus-within {
+    border-color: rgba(201,169,110,0.5);
+  }
+  .form-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 14px 22px;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: 1px;
+    color: var(--cream);
+    width: 260px;
+  }
+  .form-input::placeholder {
+    color: rgba(240,232,216,0.25);
+    font-style: italic;
+  }
+  .form-btn {
+    background: transparent;
+    border: none;
+    border-left: 0.5px solid rgba(201,169,110,0.2);
+    padding: 14px 24px;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    color: var(--gold);
+    cursor: none;
+    transition: background 0.3s, color 0.3s;
+    white-space: nowrap;
+  }
+  .form-btn:hover {
+    background: rgba(201,169,110,0.08);
+    color: var(--gold-light);
+  }
+
+  .form-note {
+    margin-top: 12px;
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(240,232,216,0.25);
+    letter-spacing: 0.5px;
+  }
+
+  /* Thank you state */
+  .thank-you {
+    display: none;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 15px;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--gold-light);
+    letter-spacing: 2px;
+    padding: 16px 0;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 80px;
+    z-index: 20;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 2s;
+  }
+  .bottom-text {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(201,169,110,0.3);
+    text-transform: uppercase;
+  }
+  .bottom-url {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(201,169,110,0.3);
+  }
+
+  /* Breathing indicator */
+  .breath-hint {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 2.4s;
+    z-index: 20;
+  }
+  .breath-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .breath-dot {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    animation: dot-breathe 8s ease-in-out infinite;
+  }
+  .breath-dot:nth-child(2) { animation-delay: 0.3s; }
+  .breath-dot:nth-child(3) { animation-delay: 0.6s; }
+  .breath-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(201,169,110,0.25);
+    font-style: italic;
+    text-transform: lowercase;
+  }
+  @keyframes dot-breathe {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.5); }
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scanline effect */
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(201,169,110,0.03), transparent);
+    animation: scan 12s linear infinite;
+    pointer-events: none;
+    z-index: 50;
+  }
+  @keyframes scan {
+    0% { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .line-left { left: 20px; }
+    .line-right { right: 20px; }
+    .top-bar, .bottom-bar { padding: 24px 32px; }
+    .top-bar-text, .bottom-text, .bottom-url { font-size: 7px; letter-spacing: 2px; }
+    .form-input { width: 180px; }
+    .wordmark { letter-spacing: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<div class="glow-top"></div>
+<div class="glow-bottom"></div>
+<div class="line-left"></div>
+<div class="line-right"></div>
+<div class="scanline"></div>
+
+<div class="orb-container">
+  <div class="orb">
+    <div class="orb-inner">
+      <div class="orb-core"></div>
+    </div>
+  </div>
+</div>
+
+<div class="top-bar">
+  <div class="top-bar-line"></div>
+  <div class="top-bar-text">EST. MMXXV</div>
+  <div class="top-bar-line"></div>
+</div>
+
+<div class="stage">
+  <div class="center">
+    <p class="eyebrow">Deep rest. Restored.</p>
+
+    <h1 class="wordmark">NIDRA</h1>
+
+    <p class="tagline">
+      The ancient art of conscious rest,<br>
+      perfected for the modern mind.
+    </p>
+
+    <div class="ornament">
+      <div class="ornament-line"></div>
+      <div class="ornament-diamond"></div>
+      <div class="ornament-line"></div>
+    </div>
+
+    <div class="form-area">
+      <label class="form-label" for="email-input">Be first to rest</label>
+      <div class="form-row" id="formRow">
+        <input
+          class="form-input"
+          id="email-input"
+          type="email"
+          placeholder="your@email.com"
+          autocomplete="email"
+        />
+        <button class="form-btn" onclick="handleSubmit()">Notify me</button>
+      </div>
+      <div class="thank-you" id="thankYou">
+        You will be the first to know.
+      </div>
+      <p class="form-note">A free session awaits you on launch day.</p>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <span class="bottom-text">London, England</span>
+  <span class="bottom-url">NIDRA.UK</span>
+</div>
+
+<div class="breath-hint">
+  <div class="breath-dots">
+    <div class="breath-dot"></div>
+    <div class="breath-dot"></div>
+    <div class="breath-dot"></div>
+  </div>
+  <span class="breath-text">breathe</span>
+</div>
+
+<script>
+  // Cursor
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top = my + 'px';
+  });
+
+  (function animateRing() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) *.12;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(animateRing);
+  })();
+
+  // Hover effects
+  document.querySelectorAll('button, input').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      cursor.style.width = '4px';
+      cursor.style.height = '4px';
+      ring.style.width = '52px';
+      ring.style.height = '52px';
+      ring.style.borderColor = 'rgba(201,169,110,0.6)';
+    });
+    el.addEventListener('mouseleave', () => {
+      cursor.style.width = '8px';
+      cursor.style.height = '8px';
+      ring.style.width = '36px';
+      ring.style.height = '36px';
+      ring.style.borderColor = 'rgba(201,169,110,0.4)';
+    });
+  });
+
+  // Form submit
+  function handleSubmit() {
+    const input = document.getElementById('email-input');
+    const val = input.value.trim();
+    if (!val || !val.includes('@')) {
+      input.style.color = 'rgba(201,169,110,0.6)';
+      input.placeholder = 'please enter a valid email';
+      setTimeout(() => { input.style.color = ''; }, 1200);
+      return;
+    }
+    document.getElementById('formRow').style.display = 'none';
+    document.getElementById('thankYou').style.display = 'block';
+    document.querySelector('.form-note').style.opacity = '0';
+  }
+
+  document.getElementById('email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSubmit();
+  });
+
+  // Orb follows cursor subtly
+  const orb = document.querySelector('.orb-container');
+  let ox = window.innerWidth / 2, oy = window.innerHeight / 2;
+  document.addEventListener('mousemove', e => {
+    const dx = (e.clientX - window.innerWidth/2) * 0.015;
+    const dy = (e.clientY - window.innerHeight/2) * 0.015;
+    orb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  });
+</script>
+</body>
+</html>
